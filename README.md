@@ -2,10 +2,15 @@
 
 A beautiful, privacy-focused video to GIF converter that runs entirely in your browser. No uploads, no servers – just pure client-side magic powered by FFmpeg.wasm.
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-video--to--gif--fawn.vercel.app-purple?logo=vercel)](https://video-to-gif-fawn.vercel.app/)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss)
+
+## 🌐 Live Demo
+
+**Try it now:** [https://video-to-gif-fawn.vercel.app/](https://video-to-gif-fawn.vercel.app/)
 
 ## ✨ Features
 
@@ -27,7 +32,7 @@ A beautiful, privacy-focused video to GIF converter that runs entirely in your b
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/video-to-gif.git
+git clone https://github.com/jluo-github/video-to-gif.git
 cd video-to-gif
 
 # Install dependencies
