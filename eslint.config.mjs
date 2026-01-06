@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendor files (FFmpeg WASM)
+    "public/ffmpeg/**",
+    // Utility scripts
+    "scripts/**",
   ]),
 ]);
 

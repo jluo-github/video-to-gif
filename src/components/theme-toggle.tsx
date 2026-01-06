@@ -2,15 +2,20 @@
 
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+// Simple external store for hydration state
+const emptySubscribe = () => () => {};
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Use useSyncExternalStore to check if we're mounted (client-side)
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true, // Client: return true
+    () => false // Server: return false
+  );
 
   if (!mounted) {
     return (

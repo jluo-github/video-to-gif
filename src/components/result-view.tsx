@@ -44,6 +44,7 @@ export function ResultView({ gifUrl, gifSize, onReset }: ResultViewProps) {
             {formatFileSize(gifSize)}
           </span>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={gifUrl}
           alt='Converted GIF'
