@@ -1,6 +1,18 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SettingsPanel } from "./settings-panel";
+
+// Mock the Radix UI Slider
+vi.mock("@radix-ui/react-slider", () => ({
+  Root: ({ children, ...props }: React.PropsWithChildren<{ value: number[] }>) => (
+    <div data-testid='slider-root' data-value={props.value?.[0]}>
+      {children}
+    </div>
+  ),
+  Track: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  Range: () => <div />,
+  Thumb: () => <div />,
+}));
 
 // Mock the cn function
 vi.mock("@/lib/utils", () => ({
