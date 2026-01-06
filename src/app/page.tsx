@@ -212,7 +212,7 @@ export default function Home() {
                 onFileSelect={handleFileSelect}
                 selectedFile={selectedFile}
                 onClear={handleClear}
-                disabled={state === "loading"}
+                disabled={!ffmpegLoaded}
               />
 
               {state === "ready" && selectedFile && (
