@@ -63,7 +63,21 @@ export async function convertToGif(
     throw new Error("FFmpeg is not loaded");
   }
 
-  const inputFileName = "input.mp4";
+  // Extract extension from filename or infer from MIME type
+  const getExtension = (file: File): string => {
+    const nameExt = file.name.split(".").pop()?.toLowerCase();
+    if (nameExt && ["mp4", "mov", "webm"].includes(nameExt)) {
+      return nameExt;
+    }
+    // Fallback to MIME type
+    const mimeMap: Record<string, string> = {
+      "video/mp4": "mp4",
+      "video/quicktime": "mov",
+      "video/webm": "webm",
+    };
+    return mimeMap[file.type] || "mp4";
+  };
+  const inputFileName = `input.${getExtension(videoFile)}`;
   const outputFileName = "output.gif";
   const paletteFileName = "palette.png";
 
