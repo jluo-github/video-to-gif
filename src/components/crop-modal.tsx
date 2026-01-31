@@ -81,15 +81,14 @@ export function CropModal({
             crop={crop}
             zoom={zoom}
             aspect={4 / 3}
-            objectFit='vertical-cover'
+            objectFit='contain'
             showGrid={true}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={handleCropComplete}
-            minZoom={1}
+            minZoom={0.5}
             maxZoom={3}
             zoomSpeed={0.1}
-            restrictPosition={true}
             style={{
               containerStyle: {
                 backgroundColor: "#000",
@@ -101,13 +100,19 @@ export function CropModal({
           />
         </div>
 
+        {/* Helper text */}
+        <div className='px-6 py-2 text-center text-xs text-purple-400/70 bg-purple-500/5'>
+          💡 <strong>Tip:</strong> Zoom OUT (slider left) to select more of the video.
+          Zoom IN (slider right) to focus on a smaller area.
+        </div>
+
         {/* Zoom Slider */}
         <div className='px-6 py-4 border-t border-purple-500/20'>
           <div className='flex items-center gap-4'>
             <span className='text-sm text-purple-300'>Zoom</span>
             <input
               type='range'
-              min={1}
+              min={0.5}
               max={3}
               step={0.1}
               value={zoom}
