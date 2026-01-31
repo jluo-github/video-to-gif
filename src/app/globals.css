@@ -97,6 +97,11 @@ body::before {
   outline-offset: 2px;
 }
 
+/* Button cursor style */
+button {
+  cursor: pointer;
+}
+
 /* Animation for shimmer effect */
 @keyframes shimmer {
   0% {
