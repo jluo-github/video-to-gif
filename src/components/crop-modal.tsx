@@ -75,12 +75,13 @@ export function CropModal({
         </div>
 
         {/* Crop Area */}
-        <div className='relative h-[400px] bg-black'>
+        <div className='relative h-[450px] bg-black'>
           <Cropper
             video={videoUrl}
             crop={crop}
             zoom={zoom}
-            aspect={1}
+            aspect={4 / 3}
+            objectFit='vertical-cover'
             showGrid={true}
             onCropChange={setCrop}
             onZoomChange={setZoom}
