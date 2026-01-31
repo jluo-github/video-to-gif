@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import path from 'path';
 import { VALID_VIDEO_BASE64 } from './fixtures';
 
 test.describe('Upload Zone', () => {

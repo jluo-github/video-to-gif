@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { SettingsPanel } from "./settings-panel";
 
 // Mock the Radix UI Slider
@@ -12,6 +12,11 @@ vi.mock("@radix-ui/react-slider", () => ({
   Track: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   Range: () => <div />,
   Thumb: () => <div />,
+}));
+
+// Mock the VideoTrimmer to avoid complex video element setup
+vi.mock("./video-trimmer", () => ({
+  VideoTrimmer: () => <div data-testid='video-trimmer'>Video Trimmer Mock</div>,
 }));
 
 // Mock the cn function
@@ -61,40 +66,46 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Output Width")).toBeInTheDocument();
   });
 
-  it("displays Trim Duration label", () => {
+  it("displays Quick Presets section", () => {
     render(<SettingsPanel {...defaultProps} />);
-    expect(screen.getByText("Trim Duration")).toBeInTheDocument();
+    expect(screen.getByText("Quick Presets")).toBeInTheDocument();
   });
 
-  it("displays start time input with correct value", () => {
+  it("displays preset buttons", () => {
     render(<SettingsPanel {...defaultProps} />);
-    const startInput = screen.getByDisplayValue("0");
-    expect(startInput).toBeInTheDocument();
+    expect(screen.getByText("Discord Sticker")).toBeInTheDocument();
+    expect(screen.getByText("High Quality")).toBeInTheDocument();
+    expect(screen.getByText("Email Friendly")).toBeInTheDocument();
   });
 
-  it("displays end time input with correct value", () => {
-    render(<SettingsPanel {...defaultProps} />);
-    const endInput = screen.getByDisplayValue("10");
-    expect(endInput).toBeInTheDocument();
+  it("displays VideoTrimmer when videoUrl is provided", () => {
+    render(<SettingsPanel {...defaultProps} videoUrl='http://example.com/video.mp4' />);
+    expect(screen.getByTestId("video-trimmer")).toBeInTheDocument();
   });
 
-  it("calls setStartTime when start input changes", () => {
+  it("does not display VideoTrimmer when videoUrl is not provided", () => {
     render(<SettingsPanel {...defaultProps} />);
-    const startInput = screen.getByDisplayValue("0");
-    fireEvent.change(startInput, { target: { value: "5" } });
-    expect(defaultProps.setStartTime).toHaveBeenCalled();
+    expect(screen.queryByTestId("video-trimmer")).not.toBeInTheDocument();
   });
 
-  it("calls setEndTime when end input changes", () => {
-    render(<SettingsPanel {...defaultProps} />);
-    const endInput = screen.getByDisplayValue("10");
-    fireEvent.change(endInput, { target: { value: "15" } });
-    expect(defaultProps.setEndTime).toHaveBeenCalled();
+  it("displays text overlay inputs when setTopText and setBottomText are provided", () => {
+    render(
+      <SettingsPanel
+        {...defaultProps}
+        topText=''
+        setTopText={vi.fn()}
+        bottomText=''
+        setBottomText={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Text Overlay (Meme Mode)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("WHEN YOU...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("...BOTTOM TEXT")).toBeInTheDocument();
   });
 
-  it("displays duration calculation", () => {
-    render(<SettingsPanel {...defaultProps} />);
-    expect(screen.getByText(/Duration: 10.0s of 30.0s/)).toBeInTheDocument();
+  it("displays Crop Video button when onCropClick is provided", () => {
+    render(<SettingsPanel {...defaultProps} onCropClick={vi.fn()} />);
+    expect(screen.getByText("Crop Video")).toBeInTheDocument();
   });
 
   it("displays slider range indicators", () => {
