@@ -225,10 +225,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Reset actions
   reset: () => {
-    const { videoUrl, gifUrl } = get();
+    const { videoUrl, gifUrl, ffmpegLoaded } = get();
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     if (gifUrl) URL.revokeObjectURL(gifUrl);
-    set(initialState);
+    // Preserve ffmpegLoaded - FFmpeg stays loaded between conversions
+    set({ ...initialState, ffmpegLoaded });
   },
 
   clearFile: () => {
