@@ -109,12 +109,23 @@ export function VideoTrimmer({
     };
   }, []);
 
-  // Stop loop if times change
+  // Stop loop if times change while looping
   useEffect(() => {
-    if (isLooping) {
-      stopPreview();
+    // Only stop if we're currently looping
+    if (!loopIntervalRef.current) return;
+
+    // Clear the interval and pause video directly
+    clearInterval(loopIntervalRef.current);
+    loopIntervalRef.current = null;
+
+    if (videoRef.current) {
+      videoRef.current.pause();
     }
-  }, [startTime, endTime]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Reset state
+    setIsPlaying(false);
+    setIsLooping(false);
+  }, [startTime, endTime]);
 
   // Reset video to start time
   const resetToStart = useCallback(() => {
