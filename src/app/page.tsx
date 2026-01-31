@@ -1,138 +1,206 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Sparkles, Wand2, AlertCircle } from "lucide-react";
+import { useEffect, useCallback, useState } from "react";
+import { Sparkles, Wand2, AlertCircle, Loader2 } from "lucide-react";
+import { Area } from "react-easy-crop";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UploadZone } from "@/components/upload-zone";
 import { SettingsPanel } from "@/components/settings-panel";
 import { ProgressDisplay } from "@/components/progress-display";
 import { ResultView } from "@/components/result-view";
-import { loadFFmpeg, convertToGif } from "@/lib/ffmpeg";
-
-type AppState = "idle" | "loading" | "ready" | "converting" | "done" | "error";
+import { CropModal } from "@/components/crop-modal";
+import { useAppStore, CropArea } from "@/store/useAppStore";
+import { getFFmpegWorker } from "@/lib/ffmpeg-worker-api";
+import { renderTextOverlay, getOverlayDimensions } from "@/lib/text-renderer";
 
 export default function Home() {
-  const [state, setState] = useState<AppState>("idle");
-  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // Select state from store
+  const appState = useAppStore((s) => s.appState);
+  const ffmpegLoaded = useAppStore((s) => s.ffmpegLoaded);
+  const loadingMessage = useAppStore((s) => s.loadingMessage);
+  const error = useAppStore((s) => s.error);
 
-  // File state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [videoDuration, setVideoDuration] = useState(0);
+  const file = useAppStore((s) => s.file);
+  const videoUrl = useAppStore((s) => s.videoUrl);
+  const videoDuration = useAppStore((s) => s.videoDuration);
+  const originalWidth = useAppStore((s) => s.originalWidth);
+  const originalHeight = useAppStore((s) => s.originalHeight);
 
-  // Settings state
-  const [fps, setFps] = useState(15);
-  const [width, setWidth] = useState(480);
-  const [startTime, setStartTime] = useState(0);
-  const [endTime, setEndTime] = useState(10);
+  const fps = useAppStore((s) => s.fps);
+  const width = useAppStore((s) => s.width);
+  const startTime = useAppStore((s) => s.startTime);
+  const endTime = useAppStore((s) => s.endTime);
 
-  // Progress & result state
-  const [progress, setProgress] = useState(0);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [gifUrl, setGifUrl] = useState<string | null>(null);
-  const [gifSize, setGifSize] = useState(0);
+  const cropArea = useAppStore((s) => s.cropArea);
+  const topText = useAppStore((s) => s.topText);
+  const bottomText = useAppStore((s) => s.bottomText);
 
-  // Load FFmpeg on mount
+  const progress = useAppStore((s) => s.progress);
+  const statusMessage = useAppStore((s) => s.statusMessage);
+  const gifUrl = useAppStore((s) => s.gifUrl);
+  const gifSize = useAppStore((s) => s.gifSize);
+
+  // Actions from store
+  const setAppState = useAppStore((s) => s.setAppState);
+  const setFfmpegLoaded = useAppStore((s) => s.setFfmpegLoaded);
+  const setLoadingMessage = useAppStore((s) => s.setLoadingMessage);
+  const setError = useAppStore((s) => s.setError);
+  const setFile = useAppStore((s) => s.setFile);
+  const setVideoMetadata = useAppStore((s) => s.setVideoMetadata);
+  const setFps = useAppStore((s) => s.setFps);
+  const setWidth = useAppStore((s) => s.setWidth);
+  const setStartTime = useAppStore((s) => s.setStartTime);
+  const setEndTime = useAppStore((s) => s.setEndTime);
+  const setCropArea = useAppStore((s) => s.setCropArea);
+  const setTopText = useAppStore((s) => s.setTopText);
+  const setBottomText = useAppStore((s) => s.setBottomText);
+  const setProgress = useAppStore((s) => s.setProgress);
+  const setResult = useAppStore((s) => s.setResult);
+  const reset = useAppStore((s) => s.reset);
+  const clearFile = useAppStore((s) => s.clearFile);
+
+  // Crop modal state
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+
+  // Load FFmpeg worker on mount
   useEffect(() => {
     const init = async () => {
-      setState("loading");
+      setAppState("loading");
       try {
-        await loadFFmpeg(setLoadingMessage);
+        const worker = getFFmpegWorker();
+        await worker.load(setLoadingMessage);
         setFfmpegLoaded(true);
-        setState("idle");
+        setAppState("idle");
       } catch (err) {
         console.error("Failed to load FFmpeg:", err);
         setError("Failed to load FFmpeg. Please refresh the page.");
-        setState("error");
       }
     };
     init();
-  }, []);
 
-  // Get video duration when file is selected
-  const handleFileSelect = useCallback((file: File) => {
-    setSelectedFile(file);
-    setError(null);
-
-    const video = document.createElement("video");
-    video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      const duration = video.duration;
-      setVideoDuration(duration);
-      setStartTime(0);
-      setEndTime(Math.min(duration, 10)); // Default to first 10 seconds
-      URL.revokeObjectURL(video.src);
-      setState("ready");
+    // Cleanup worker on unmount
+    return () => {
+      getFFmpegWorker().terminate();
     };
-    video.onerror = () => {
-      setError("Could not read video metadata. The file may be corrupted.");
-      setSelectedFile(null);
-    };
-    video.src = URL.createObjectURL(file);
-  }, []);
+  }, [setAppState, setLoadingMessage, setFfmpegLoaded, setError]);
 
+  // Handle file selection
+  const handleFileSelect = useCallback(
+    (selectedFile: File) => {
+      setFile(selectedFile);
+
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.onloadedmetadata = () => {
+        setVideoMetadata({
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+        });
+        URL.revokeObjectURL(video.src);
+      };
+      video.onerror = () => {
+        setError("Could not read video metadata. The file may be corrupted.");
+        setFile(null);
+      };
+      video.src = URL.createObjectURL(selectedFile);
+    },
+    [setFile, setVideoMetadata, setError],
+  );
+
+  // Handle clear
   const handleClear = useCallback(() => {
-    setSelectedFile(null);
-    setVideoDuration(0);
-    setState("idle");
-    setError(null);
-    if (gifUrl) {
-      URL.revokeObjectURL(gifUrl);
-      setGifUrl(null);
-    }
-  }, [gifUrl]);
+    clearFile();
+  }, [clearFile]);
 
+  // Handle crop complete
+  const handleCropComplete = useCallback(
+    (area: Area | null) => {
+      if (area) {
+        const cropData: CropArea = {
+          x: Math.round(area.x),
+          y: Math.round(area.y),
+          width: Math.round(area.width),
+          height: Math.round(area.height),
+        };
+        setCropArea(cropData);
+      } else {
+        setCropArea(null);
+      }
+    },
+    [setCropArea],
+  );
+
+  // Handle convert
   const handleConvert = useCallback(async () => {
-    if (!selectedFile || !ffmpegLoaded) return;
+    if (!file || !ffmpegLoaded) return;
 
-    setState("converting");
-    setProgress(0);
-    setStatusMessage("Preparing video...");
+    setAppState("converting");
+    setProgress(0, "Preparing video...");
 
     try {
-      const blob = await convertToGif(selectedFile, {
-        fps,
-        width,
-        startTime,
-        endTime,
-        onProgress: (p) => {
-          setProgress(p);
-          if (p < 50) {
-            setStatusMessage("Generating color palette...");
-          } else {
-            setStatusMessage("Creating GIF frames...");
-          }
+      // Generate text overlay if needed
+      let textOverlayBlob: Blob | undefined;
+      if (topText.trim() || bottomText.trim()) {
+        setProgress(2, "Rendering text overlay...");
+        const dimensions = getOverlayDimensions(originalWidth, originalHeight, width);
+        const blob = await renderTextOverlay(
+          topText,
+          bottomText,
+          dimensions.width,
+          dimensions.height,
+        );
+        if (blob) {
+          textOverlayBlob = blob;
+        }
+      }
+
+      const worker = getFFmpegWorker();
+      const blob = await worker.convert(
+        file,
+        {
+          fps,
+          width,
+          startTime,
+          endTime,
+          crop: cropArea ?? undefined,
         },
-      });
+        (p, status) => {
+          setProgress(p, status);
+        },
+        textOverlayBlob,
+      );
 
       const url = URL.createObjectURL(blob);
-      setGifUrl(url);
-      setGifSize(blob.size);
-      setProgress(100);
-      setStatusMessage("GIF created successfully!");
-      setState("done");
+      setResult(url, blob.size);
     } catch (err) {
       console.error("Conversion failed:", err);
       setError(
-        err instanceof Error ? err.message : "Conversion failed. Please try again."
+        err instanceof Error ? err.message : "Conversion failed. Please try again.",
       );
-      setState("error");
     }
-  }, [selectedFile, ffmpegLoaded, fps, width, startTime, endTime]);
+  }, [
+    file,
+    ffmpegLoaded,
+    fps,
+    width,
+    startTime,
+    endTime,
+    cropArea,
+    topText,
+    bottomText,
+    originalWidth,
+    originalHeight,
+    setAppState,
+    setProgress,
+    setResult,
+    setError,
+  ]);
 
+  // Handle reset
   const handleReset = useCallback(() => {
-    if (gifUrl) {
-      URL.revokeObjectURL(gifUrl);
-    }
-    setGifUrl(null);
-    setGifSize(0);
-    setProgress(0);
-    setSelectedFile(null);
-    setVideoDuration(0);
-    setState("idle");
-    setError(null);
-  }, [gifUrl]);
+    reset();
+  }, [reset]);
 
   return (
     <div className='min-h-screen min-h-dvh flex flex-col'>
@@ -169,7 +237,7 @@ export default function Home() {
           </div>
 
           {/* Loading State */}
-          {state === "loading" && (
+          {appState === "loading" && (
             <div className='p-8 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-purple-500/30 text-center'>
               <div className='h-16 w-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25 animate-pulse'>
                 <Wand2 className='h-8 w-8 text-white' />
@@ -184,7 +252,7 @@ export default function Home() {
           )}
 
           {/* Error State */}
-          {state === "error" && error && (
+          {appState === "error" && error && (
             <div className='p-6 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-4'>
               <div className='h-10 w-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0'>
                 <AlertCircle className='h-5 w-5 text-red-500' />
@@ -206,16 +274,16 @@ export default function Home() {
           )}
 
           {/* Idle / Ready States */}
-          {(state === "idle" || state === "ready") && (
+          {(appState === "idle" || appState === "ready") && (
             <>
               <UploadZone
                 onFileSelect={handleFileSelect}
-                selectedFile={selectedFile}
+                selectedFile={file}
                 onClear={handleClear}
                 disabled={!ffmpegLoaded}
               />
 
-              {state === "ready" && selectedFile && (
+              {appState === "ready" && file && videoUrl && (
                 <>
                   <SettingsPanel
                     fps={fps}
@@ -227,7 +295,29 @@ export default function Home() {
                     endTime={endTime}
                     setEndTime={setEndTime}
                     maxDuration={videoDuration}
+                    videoUrl={videoUrl}
+                    originalWidth={originalWidth}
+                    topText={topText}
+                    setTopText={setTopText}
+                    bottomText={bottomText}
+                    setBottomText={setBottomText}
+                    onCropClick={() => setIsCropModalOpen(true)}
                   />
+
+                  {/* Crop indicator */}
+                  {cropArea && (
+                    <div className='flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-sm text-purple-700 dark:text-purple-300'>
+                      <span>
+                        ✂️ Crop active: {cropArea.width}×{cropArea.height} at (
+                        {cropArea.x}, {cropArea.y})
+                      </span>
+                      <button
+                        onClick={() => setCropArea(null)}
+                        className='ml-auto text-xs hover:underline'>
+                        Remove
+                      </button>
+                    </div>
+                  )}
 
                   <button
                     onClick={handleConvert}
@@ -241,12 +331,20 @@ export default function Home() {
           )}
 
           {/* Converting State */}
-          {state === "converting" && (
-            <ProgressDisplay progress={progress} status={statusMessage} />
+          {appState === "converting" && (
+            <div className='space-y-6'>
+              <ProgressDisplay progress={progress} status={statusMessage} />
+              <div className='flex items-center justify-center gap-2 text-purple-600 dark:text-purple-400'>
+                <Loader2 className='h-5 w-5 animate-spin' />
+                <span className='text-sm font-medium'>
+                  Processing in background — UI stays responsive!
+                </span>
+              </div>
+            </div>
           )}
 
           {/* Done State */}
-          {state === "done" && gifUrl && (
+          {appState === "done" && gifUrl && (
             <ResultView gifUrl={gifUrl} gifSize={gifSize} onReset={handleReset} />
           )}
         </div>
@@ -256,6 +354,17 @@ export default function Home() {
       <footer className='w-full px-6 py-4 text-center text-sm text-gray-600 dark:text-purple-300/50'>
         <p>Built with 💜 using FFmpeg.wasm • All processing happens in your browser</p>
       </footer>
+
+      {/* Crop Modal */}
+      {videoUrl && (
+        <CropModal
+          isOpen={isCropModalOpen}
+          onClose={() => setIsCropModalOpen(false)}
+          videoUrl={videoUrl}
+          onCropComplete={handleCropComplete}
+          initialCrop={cropArea}
+        />
+      )}
     </div>
   );
 }
