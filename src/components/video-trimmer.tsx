@@ -122,8 +122,10 @@ export function VideoTrimmer({
       videoRef.current.pause();
     }
 
-    // Reset state
+    // Reset state - this is intentional synchronous state update
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsPlaying(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLooping(false);
   }, [startTime, endTime]);
 
