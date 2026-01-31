@@ -80,26 +80,21 @@ export function CropModal({
             video={videoUrl}
             crop={crop}
             zoom={zoom}
-            aspect={undefined}
-            objectFit='contain'
-            cropSize={{ width: 350, height: 350 }}
+            aspect={1}
             showGrid={true}
             onCropChange={setCrop}
             onZoomChange={setZoom}
             onCropComplete={handleCropComplete}
-            minZoom={0.5}
+            minZoom={1}
             maxZoom={3}
             zoomSpeed={0.1}
+            restrictPosition={true}
             style={{
               containerStyle: {
                 backgroundColor: "#000",
               },
-              mediaStyle: {
-                maxHeight: "100%",
-              },
               cropAreaStyle: {
                 border: "2px solid rgba(168, 85, 247, 0.8)",
-                boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.6)",
               },
             }}
           />
@@ -111,7 +106,7 @@ export function CropModal({
             <span className='text-sm text-purple-300'>Zoom</span>
             <input
               type='range'
-              min={0.5}
+              min={1}
               max={3}
               step={0.1}
               value={zoom}
